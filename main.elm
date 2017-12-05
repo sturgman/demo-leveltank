@@ -15,7 +15,7 @@ type alias Model =
     , param3 : SliderModel
     , currentvalue : Float
     , currenttime : Float
-    , simvalues : List (Float,Float)
+    , simvalues : BD.BoundedDeque (Float,Float)
     , timeinterval : Float
     }
 
@@ -67,7 +67,7 @@ init =
            )
      , currentvalue = result
      , currenttime = 0.0
-     , simvalues = [(0.0,result)]
+     , simvalues = (BD.fromList 120 [(0.0,result)])
      , timeinterval = timeinterval
      }
     , Cmd.none)
@@ -101,7 +101,10 @@ renderresults model =
 
 renderhistory model =
     div []
-        (List.map renderpoint model.simvalues)
+        (BD.toList (BD.map renderpoint model.simvalues))
+
+-- renderhistory model =
+    
 
 renderpoint value =
     Html.p [] [text (toString value)]
@@ -155,8 +158,8 @@ update msg model =
                 currenttime = lasttime + model.timeinterval
             in
                 ({ model |
-                       simvalues =
-                       ((currenttime,model.currentvalue) :: model.simvalues),
+                       simvalues = model.simvalues
+                                 |> BD.pushBack (currenttime,model.currentvalue) , 
                        currenttime = currenttime
                  }, Cmd.none)
 
