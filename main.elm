@@ -6,6 +6,8 @@ import String as S
 import Time
 
 import BoundedDeque as BD
+import Plot as P
+import MyPlot as MP
 
 -- Model
 
@@ -21,7 +23,23 @@ type alias Model =
 
 timeinterval : Float
 timeinterval = 2.0
-    
+
+dequesize = 120
+
+tickintervalx =
+    timeinterval*dequesize/8
+
+ticklocationsx =
+    List.map
+        (\x -> (toFloat x)*tickintervalx)
+        (List.range 0 8)
+            
+minx = 0.0
+maxx = dequesize * timeinterval
+
+miny = 0.0
+maxy = 50.0*100*100
+               
 main =
     program
         { init = init
@@ -67,7 +85,7 @@ init =
            )
      , currentvalue = result
      , currenttime = 0.0
-     , simvalues = (BD.fromList 120 [(0.0,result)])
+     , simvalues = (BD.fromList dequesize [(0.0,result)])
      , timeinterval = timeinterval
      }
     , Cmd.none)
@@ -99,11 +117,45 @@ renderresults model =
             [ h4 [] [text (toString (param1*param2*param3)) ]]
 
 
-renderhistory model =
-    div []
-        (BD.toList (BD.map renderpoint model.simvalues))
-
 -- renderhistory model =
+--     div []
+--         (BD.toList (BD.map renderpoint model.simvalues))
+
+
+xaxis = MP.myaxis ticklocationsx
+
+pltwidth = 520
+pltheight = 400
+        
+fixedRangePlot default minX maxX minY maxY =
+    P.viewSeriesCustom
+        { default
+            | width = pltwidth
+            , height = pltheight
+            , margin =
+              { top  = 20
+              , right = 20
+              , bottom = 40
+              , left = 60
+              }
+            , horizontalAxis = xaxis
+            , toDomainLowest = always minY
+            , toDomainHighest = always maxY
+            , toRangeLowest = always minX
+            , toRangeHighest = always maxX
+            , attributes = [(A.style
+                                 [ ("max-width","520px")
+                                 , ("width","100%")
+                                 ])
+                            ]
+        }     
+        
+
+renderhistory model =
+    fixedRangePlot
+        P.defaultSeriesPlotCustomizations minx maxx miny maxy
+        [ MP.myseries (List.map (\(x,y) -> MP.smallcircle x y)) ]
+        (BD.toList model.simvalues)
     
 
 renderpoint value =
@@ -205,7 +257,10 @@ extractvalue msg model=
 -- Subs
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every  (Time.second * 2) Propagate
+    if model.currenttime > maxx then
+        Sub.none
+    else
+        Time.every  (Time.second * 2) Propagate
 
 -- Sliders                
     
