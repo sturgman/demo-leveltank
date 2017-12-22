@@ -1,44 +1,54 @@
-import Html exposing (Html, input, text, div, program,h4,span)
+import Html exposing (Html, input, text, div, program,h4,span,button)
+import Html.Lazy exposing (lazy)
 import Html.Attributes as A exposing (type_,value,min,max,step) 
-import Html.Events exposing (on, targetValue, onInput,onMouseEnter,onMouseLeave)
-import Json.Decode as Json
+import Html.Events exposing (on, targetValue, onInput,onMouseEnter,onMouseLeave,onFocus,onClick)
+import Sliders exposing (..)
 import String as S
 import Time
-
+import Solvers exposing (euler)
+import Parameters exposing (..)
 import BoundedDeque as BD
 import Plot as P
 import MyPlot as MP
-
+import PhysicalModels as PModel
+-- import FontAwesome.Web as Icon
 -- Model
 
+-- Example data
+expdata t = 
+    e^(-0.05*t)
+
+actydata = List.map (toFloat >> expdata) (List.range 0 240)
+actdata = List.map2 (\a b -> (a,b)) (List.map toFloat (List.range 0 240)) actydata
+          
+--}
+
+type Status = Idle
+            | Going
+
 type alias Model =
-    { param1 : SliderModel
-    , param2 : SliderModel
-    , param3 : SliderModel
+    { p : SliderModel
     , currentvalue : Float
     , currenttime : Float
     , simvalues : BD.BoundedDeque (Float,Float)
     , timeinterval : Float
+    , math : Float -> Float -> Float
+    , solver : Float -> Float -> Float
+    , timestep : Float
+    , steps : Int
+    , status : Status
     }
 
-timeinterval : Float
-timeinterval = 2.0
+mathmodel : Float -> Float -> Float -> Float
+mathmodel = PModel.simple
 
-dequesize = 120
-
-tickintervalx =
-    timeinterval*dequesize/8
-
-ticklocationsx =
-    List.map
-        (\x -> (toFloat x)*tickintervalx)
-        (List.range 0 8)
+            
             
 minx = 0.0
-maxx = dequesize * timeinterval
+maxx = (toFloat dequesize) * timeinterval
 
 miny = 0.0
-maxy = 50.0*100*100
+maxy = 1
                
 main =
     program
@@ -52,41 +62,30 @@ main =
 init : (Model, Cmd Msg)
 init =
     let
-        val1 = 50.0
-        val2 = 75.0
-        val3 = 25.0
-        result = val1*val2*val3
-        defmin = 0
-        defmax = 100
+        val1 = -0.05
+        result = 1
+        defmin = -1.0
+        defmax = 1.0
+        math = mathmodel val1
+        mysolver = euler timestep math
     in 
-    ({ param1 =
+    ({ p =
            (SliderModel
                 val1
                 defmin
                 defmax
-                "0.5"
+                "0.01"
                 "Param1"
-           )
-     , param2 =
-           (SliderModel
-                val2
-                50
-                defmax
-                "0.5"
-                "Param2"
-           )
-     , param3 =
-           (SliderModel
-                val3
-                defmin
-                50
-                "0.5"
-                "Param3"
            )
      , currentvalue = result
      , currenttime = 0.0
      , simvalues = (BD.fromList dequesize [(0.0,result)])
      , timeinterval = timeinterval
+     , timestep = timestep
+     , steps = 0
+     , math = math
+     , solver = mysolver
+     , status = Idle
      }
     , Cmd.none)
 
@@ -94,27 +93,40 @@ init =
     
 view model =
     div []
-        [ renderinputs model
+        [ renderbuttons model "play-circle"
+        , renderinputs model
         , renderresults model
         , renderhistory model
         ]
 
+renderbuttons model icon=
+    let
+        buttontext =
+            case model.status of
+                Idle -> "Start"
+                Going -> "Pause"
+    in 
+        div []
+            [ button
+                  [ onClick ToggleState ]
+                  [ Html.i
+                        [A.class ("far fa-" ++ icon) ]
+                        []
+                  ]
+            ]
+
 renderinputs model =
     div []
-        [ Html.map Updt1 (sliderView model.param1)
-        , Html.map Updt2 (sliderView model.param2)
-        , Html.map Updt3 (sliderView model.param3)
+        [ Html.map Updt1 (lazy sliderView model.p)
         ]
 
         
 renderresults model =
     let
-        param1 = model.param1.value
-        param2 = model.param2.value
-        param3 = model.param3.value
+        p = model.p.value
     in
         div []
-            [ h4 [] [text (toString (param1*param2*param3)) ]]
+            [ h4 [] [text (toString (model.currentvalue)) ]]
 
 
 -- renderhistory model =
@@ -122,40 +134,15 @@ renderresults model =
 --         (BD.toList (BD.map renderpoint model.simvalues))
 
 
-xaxis = MP.myaxis ticklocationsx
-
-pltwidth = 520
-pltheight = 400
         
-fixedRangePlot default minX maxX minY maxY =
-    P.viewSeriesCustom
-        { default
-            | width = pltwidth
-            , height = pltheight
-            , margin =
-              { top  = 20
-              , right = 20
-              , bottom = 40
-              , left = 60
-              }
-            , horizontalAxis = xaxis
-            , toDomainLowest = always minY
-            , toDomainHighest = always maxY
-            , toRangeLowest = always minX
-            , toRangeHighest = always maxX
-            , attributes = [(A.style
-                                 [ ("max-width","520px")
-                                 , ("width","100%")
-                                 ])
-                            ]
-        }     
-        
-
+    
 renderhistory model =
-    fixedRangePlot
+    MP.fixedRangePlot
         P.defaultSeriesPlotCustomizations minx maxx miny maxy
-        [ MP.myseries (List.map (\(x,y) -> MP.smallcircle x y)) ]
-        (BD.toList model.simvalues)
+        [ MP.myseries (Tuple.first >> (List.map (\(x,y) -> MP.smallcircle x y))) -- the argument to myseries and p.line are functions that extract the right series from the data.
+        , P.line (Tuple.second >> (List.map (\(x,y) -> P.clear x y)))
+        ]
+        ((BD.toList model.simvalues),actdata)
     
 
 renderpoint value =
@@ -171,53 +158,63 @@ convertoint param =
 -- Update
                   
 type Msg = Updt1 SliderMsg
-         | Updt2 SliderMsg
-         | Updt3 SliderMsg
-         | Propagate Time.Time
+         | SimTime Time.Time
+         | EqTime Time.Time
+         | ToggleState
+
+simoreq model t =
+    if model.steps % steplonginterval == 0 then
+        SimTime t
+    else
+        EqTime t
     
+           
 update msg model =
     case msg of
         Updt1 v ->
             let
-                num = (extractvalue v model.param1)
-                result = (calculatecurrent num model.param2.value model.param3.value)
+                num = (extractvalue v model.p)
+                math = mathmodel num
             in
                 ({ model |
-                       param1 = sliderUpdate v model.param1 ,
-                       currentvalue = result
+                       p = sliderUpdate v model.p,
+                       math = math,
+                       solver = euler timestep math             
                  }, Cmd.none)
-        Updt2 v ->
-            let
-                num = (extractvalue v model.param2)
-                result = (calculatecurrent model.param1.value num model.param3.value)
-            in
-                ({ model | param2 =
-                       sliderUpdate v model.param2 ,
-                       currentvalue = result
-                 }, Cmd.none)
-        Updt3 v ->
-            let
-                num = (extractvalue v model.param3)
-                result = (calculatecurrent model.param1.value model.param2.value num)
-            in
-                ({ model | param3 =
-                       sliderUpdate v model.param3 ,
-                       currentvalue = result
-                 }, Cmd.none)
-        Propagate newtime ->
+
+        SimTime newtime ->
             let
                 lasttime = model.currenttime
-                currenttime = lasttime + model.timeinterval
+                lastvalue = model.currentvalue
+                currenttime = lasttime + model.timestep
+                solver = model.solver
+                steps = model.steps + 1
             in
                 ({ model |
-                       simvalues = model.simvalues
-                                 |> BD.pushBack (currenttime,model.currentvalue) , 
-                       currenttime = currenttime
+                       currentvalue = solver lasttime lastvalue,
+                       currenttime = currenttime,
+                       simvalues = model.simvalues |>
+                                   BD.pushBack (lasttime,lastvalue),
+                       steps = steps
                  }, Cmd.none)
 
-calculatecurrent p1 p2 p3 =
-    p1 * p2 * p3
+        EqTime newtime ->
+            let
+                lasttime = model.currenttime
+                currenttime = lasttime + model.timestep
+                lastvalue = model.currentvalue
+                solver = model.solver
+                steps = model.steps + 1
+            in ({ model |
+                      currentvalue = solver lasttime lastvalue,
+                      currenttime = currenttime,
+                      steps = steps
+                }, Cmd.none)
 
+        ToggleState ->
+            case model.status of
+                Idle -> ({model | status = Going},Cmd.none)
+                Going -> ({model | status = Idle},Cmd.none)
 
 extractvalue : SliderMsg -> SliderModel -> Float
 extractvalue msg model=
@@ -257,79 +254,8 @@ extractvalue msg model=
 -- Subs
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if model.currenttime > maxx then
+    if model.status == Idle || model.currenttime > maxx then
         Sub.none
     else
-        Time.every  (Time.second * 2) Propagate
+        Time.every (Time.second * 0.1) (simoreq model)
 
--- Sliders                
-    
-type alias SliderModel =
-    { value : Float
-    , min : Float
-    , max : Float
-    , step : String
-    , label : String
-    }
-
-
-sliderView : SliderModel -> Html SliderMsg
-sliderView model =
-    div []
-      [ h4 [] [text (model.label ++ ":")]
-      , div []
-          [ input [ type_ "range"
-                  , onInput Slide
-                  , value <| toString <| model.value
-                  , A.max <| toString <| model.max
-                  , A.min <| toString <| model.min
-                  , step model.step ] []
-          , span []
-              [input [type_ "number"
-                     , onchange TextIn
-                     , value <| toString <| model.value
-                     , A.max <| toString <| model.max
-                     , A.min <| toString <| model.min
-                     , step model.step ] []
-              ] 
-          ]
-      ]
-
-type SliderMsg = Slide String
-               | TextIn String
-
-        
-sliderUpdate : SliderMsg -> SliderModel -> SliderModel
-sliderUpdate msg model =
-    case msg of
-        Slide num ->
-            case (S.toFloat num) of
-                Ok v ->
-                    if v < model.min then
-                        model
-                            
-                    else if v > model.max then
-                        model
-
-                    else
-                        { model | value = v}
-                            
-                Err v ->
-                    model
-                
-        TextIn num ->
-            case (S.toFloat num) of
-                Ok v ->
-                    if v < model.min then
-                        model
-                            
-                    else if v > model.max then
-                        model
-
-                    else
-                        { model | value = v}
-
-                Err v ->
-                    model
-
-onchange tagger = on "change" (Json.map tagger targetValue)
