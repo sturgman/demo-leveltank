@@ -18,6 +18,8 @@ import PhysicalModels as PModel
 expdata t = 
     e^(-0.05*t)
 
+-- This is all so that I can prepare the analytical solution
+-- so that it works with elm-plot
 actydata = List.map (toFloat >> expdata) (List.range 0 240)
 actdata = List.map2 (\a b -> (a,b)) (List.map toFloat (List.range 0 240)) actydata
           

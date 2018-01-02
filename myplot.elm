@@ -16,13 +16,20 @@ myseries toDataPoints =
 smallcircle =
     P.dot (P.viewCircle 3.0 "#1d6632")
 
+shiftedLabel : Float -> P.LabelCustomizations
+shiftedLabel position =
+    { position = position
+    , view = P.viewLabel [(P.displace 0 -15)
+                         , SA.dominantBaseline "hanging"] (toString position)
+    }
+        
 myaxis : List Float -> P.Axis
 myaxis ticksandlabels =
     P.customAxis <| \summary ->
         { position = P.closestToZero
         , axisLine = Just (P.simpleLine summary)
         , ticks = List.map P.simpleTick ticksandlabels
-        , labels = List.map P.simpleLabel ticksandlabels
+        , labels = List.map shiftedLabel ticksandlabels
         , flipAnchor = False
         }
 
