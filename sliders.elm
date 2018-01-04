@@ -18,23 +18,26 @@ type alias SliderModel =
     }
 
 
+    
+
 sliderView : SliderModel -> Html SliderMsg
 sliderView model =
     div []
-      [ text (model.label ++ ":")
-      , div []
-          [ input [ type_ "range"
-                  , onInput Slide
-                  , value <| toString <| model.value
-                  , A.max <| toString <| model.max
-                  , A.min <| toString <| model.min
-                  , step model.step ] []
-          , span []
-              [ lazy renderNumberInput (model.value,model.max,model.min,model.step)
-              ] 
-          ]
-      ]
-
+        [ text (model.label ++ ":")
+        , div []
+            [ input [ type_ "range"
+                    , onInput Slide
+                    , value <| toString <| model.value
+                    , A.max <| toString <| model.max
+                    , A.min <| toString <| model.min
+                    , step model.step ] []
+            , span []
+                -- The lazy here necessary to prevent continuous update as the model integrates.
+                [ lazy renderNumberInput (model.value,model.max,model.min,model.step) 
+                ] 
+            ]
+       ]
+            
 renderNumberInput (v,max,min,step) =
     input [type_ "number"
                      , onchange TextIn
@@ -82,3 +85,37 @@ sliderUpdate msg model =
                     model
 
 onchange tagger = on "change" (Json.map tagger targetValue)
+
+extractvalue : SliderMsg -> SliderModel -> Float
+extractvalue msg model=
+    case msg of
+        Slide num ->
+            case (S.toFloat num) of
+                Ok v ->
+                    if v < model.min then
+                        model.value
+                            
+                    else if v > model.max then
+                        model.value
+
+                    else
+                        v
+                            
+                Err errmsg ->
+                    model.value
+                
+        TextIn num ->
+            case (S.toFloat num) of
+                Ok v ->
+                    if v < model.min then
+                        model.value
+                            
+                    else if v > model.max then
+                        model.value
+
+                    else
+                        v
+
+                Err errmsg ->
+                    model.value
+    

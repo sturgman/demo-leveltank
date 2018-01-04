@@ -22,10 +22,10 @@ svg {
   max-width: 400px ;
 }
 
-  * {
-margin: 0;
-padding: 0;
-  }
+/*   * { */
+/* margin: 0; */
+/* padding: 0; */
+/*   } */
 
   body, li  p {
       font-family: "fira sans"; }

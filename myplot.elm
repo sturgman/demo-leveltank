@@ -22,6 +22,12 @@ shiftedLabel position =
     , view = P.viewLabel [(P.displace 0 -15)
                          , SA.dominantBaseline "hanging"] (toString position)
     }
+
+shiftedLabel2 : Float -> P.LabelCustomizations
+shiftedLabel2 position =
+    { position = position
+    , view = P.viewLabel [SA.dy "-1em"] (toString position)
+    }
         
 myaxis : List Float -> P.Axis
 myaxis ticksandlabels =

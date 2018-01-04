@@ -11,6 +11,8 @@ import BoundedDeque as BD
 import Plot as P
 import MyPlot as MP
 import PhysicalModels as PModel
+import Controllers as C
+
 -- import FontAwesome.Web as Icon
 -- Model
 
@@ -39,6 +41,7 @@ type alias Model =
     , timestep : Float
     , steps : Int
     , status : Status
+    , controller : C.PIDBasic
     }
 
 mathmodel : Float -> Float -> Float -> Float
@@ -88,14 +91,16 @@ init =
      , math = math
      , solver = mysolver
      , status = Idle
+     , controller = C.initcontroller
      }
     , Cmd.none)
 
 -- View
-    
+
 view model =
     div []
         [ renderbuttons model "play-circle"
+        , rendercontroller model
         , renderinputs model
         , renderresults model
         , renderhistory model
@@ -117,6 +122,11 @@ renderbuttons model icon=
                   ]
             ]
 
+rendercontroller model =
+    div []
+        [ Html.map NoOp (lazy C.viewPID model.controller)
+        ]
+            
 renderinputs model =
     div []
         [ Html.map Updt1 (lazy sliderView model.p)
@@ -163,6 +173,7 @@ type Msg = Updt1 SliderMsg
          | SimTime Time.Time
          | EqTime Time.Time
          | ToggleState
+         | NoOp C.Msg
 
 simoreq model t =
     if model.steps % steplonginterval == 0 then
@@ -218,39 +229,13 @@ update msg model =
                 Idle -> ({model | status = Going},Cmd.none)
                 Going -> ({model | status = Idle},Cmd.none)
 
-extractvalue : SliderMsg -> SliderModel -> Float
-extractvalue msg model=
-    case msg of
-        Slide num ->
-            case (S.toFloat num) of
-                Ok v ->
-                    if v < model.min then
-                        model.value
-                            
-                    else if v > model.max then
-                        model.value
+        NoOp cmsg ->
+            
+            ({ model
+                 | controller = C.updatecontroller cmsg model.controller
+             }
+            , Cmd.none)
 
-                    else
-                        v
-                            
-                Err errmsg ->
-                    model.value
-                
-        TextIn num ->
-            case (S.toFloat num) of
-                Ok v ->
-                    if v < model.min then
-                        model.value
-                            
-                    else if v > model.max then
-                        model.value
-
-                    else
-                        v
-
-                Err errmsg ->
-                    model.value
-    
         
 
 -- Subs
