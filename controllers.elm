@@ -26,6 +26,7 @@ type alias PIDBasic =
     , output : Float
     , mode : Mode
     , manualOutput : SliderModel
+    , bias : Float
     }
 
 
@@ -33,7 +34,7 @@ type Mode
     = Auto
     | Manual
 
-
+update : Float -> PIDBasic -> Float -> PIDBasic
 update dt controller feedback =
     case controller.mode of
         Auto ->
@@ -50,18 +51,25 @@ update dt controller feedback =
                     c.kp * error
 
                 iterm =
-                    c.iterm + error * dt
+                    c.errorintegral + error * dt
 
                 dterm =
                     c.kd * delta_error / dt
 
                 output =
-                    pterm + iterm * c.ki + dterm
+                    c.bias + pterm + iterm * c.ki + dterm
+
+                slider = controller.manualOutput
+
+                manualOutput = { slider |
+                                     value = output
+                               } 
             in
             { controller
                 | errorintegral = iterm
                 , lastE = error
                 , output = output
+                , manualOutput =  manualOutput
             }
 
         Manual ->
@@ -119,19 +127,19 @@ notMode mode =
 initcontroller =
     (PIDBasic
          -- kp
-         0.2
+         10.0
          -- ki
-         0.0
+         5.0
          -- kd
-         0.0
+         1.0
          -- errorintegral
          0.0
          -- lastE
          0.0
          -- setPoint
-         0.0
+         2.5
          -- output
-         0.0
+         50.0
          -- mode
          Manual
          -- slider
@@ -139,9 +147,10 @@ initcontroller =
               50.0
               0.0
               100.0
-              "0.01"
+              "0.5"
               "Controller Output"
          )
+         50.0
     )
 
 
@@ -163,9 +172,10 @@ viewPID cont =
         renderInput =
             case cont.mode of
                 Auto ->
-                    [ renderNumberInput Updtkp "kp" cont.kp
-                    , renderNumberInput Updtki "ki" cont.ki
-                    , renderNumberInput Updtkd "kd" cont.kd
+                    [ lazy renderkp cont.kp
+                    , lazy renderki cont.ki
+                    , lazy renderkd cont.kd
+                    , Html.map UpdtM (lazy sliderView cont.manualOutput)
                     ]
                 Manual ->
                     [Html.map UpdtM (lazy sliderView cont.manualOutput)]
@@ -201,6 +211,15 @@ renderNumberInput msg lbl v =
               []
         ]
 
+renderkp v =
+    renderNumberInput Updtkp "kp" v
 
+renderki v =
+    renderNumberInput Updtki "ki" v
+
+renderkd v =
+    renderNumberInput Updtkd "kd" v
+
+        
 onchange tagger =
     on "change" (Json.map tagger targetValue)

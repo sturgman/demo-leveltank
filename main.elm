@@ -11,19 +11,11 @@ import BoundedDeque as BD
 import Plot as P
 import MyPlot as MP
 import PhysicalModels as PModel
-import Controllers as C
+import Controllers as C exposing (initcontroller)
 
 -- import FontAwesome.Web as Icon
 -- Model
 
--- Example data
-expdata t = 
-    e^(-0.05*t)
-
--- This is all so that I can prepare the analytical solution
--- so that it works with elm-plot
-actydata = List.map (toFloat >> expdata) (List.range 0 240)
-actdata = List.map2 (\a b -> (a,b)) (List.map toFloat (List.range 0 240)) actydata
           
 --}
 
@@ -31,9 +23,9 @@ type Status = Idle
             | Going
 
 type alias Model =
-    { p : SliderModel
-    , currentvalue : Float
+    { currentvalue : Float
     , currenttime : Float
+    , inletflow : Float
     , simvalues : BD.BoundedDeque (Float,Float)
     , timeinterval : Float
     , math : Float -> Float -> Float
@@ -44,16 +36,10 @@ type alias Model =
     , controller : C.PIDBasic
     }
 
-mathmodel : Float -> Float -> Float -> Float
-mathmodel = PModel.simple
-
-            
-            
-minx = 0.0
-maxx = (toFloat dequesize) * timeinterval
+ 
 
 miny = 0.0
-maxy = 1
+maxy = 5.0
                
 main =
     program
@@ -63,27 +49,22 @@ main =
         , subscriptions = subscriptions
         }
 
+mycontroller = { initcontroller |
+                     setPoint = 2.5
+               }
 
 init : (Model, Cmd Msg)
 init =
     let
-        val1 = -0.05
-        result = 1
-        defmin = -1.0
-        defmax = 1.0
-        math = mathmodel val1
+        result = 2.5
+        val1 = 50.0
+        math = PModel.mytank 10.0
+                                                  
         mysolver = euler timestep math
     in 
-    ({ p =
-           (SliderModel
-                val1
-                defmin
-                defmax
-                "0.01"
-                "Param1"
-           )
-     , currentvalue = result
+    ({ currentvalue = result
      , currenttime = 0.0
+     , inletflow = 10.0
      , simvalues = (BD.fromList dequesize [(0.0,result)])
      , timeinterval = timeinterval
      , timestep = timestep
@@ -101,7 +82,6 @@ view model =
     div []
         [ renderbuttons model "play-circle"
         , rendercontroller model
-        , renderinputs model
         , renderresults model
         , renderhistory model
         ]
@@ -124,19 +104,16 @@ renderbuttons model icon=
 
 rendercontroller model =
     div []
-        [ Html.map NoOp (lazy C.viewPID model.controller)
+        [ Html.map UpdtCont (lazy C.viewPID model.controller)
         ]
-            
+{-            
 renderinputs model =
     div []
         [ Html.map Updt1 (lazy sliderView model.p)
         ]
-
+-}
         
 renderresults model =
-    let
-        p = model.p.value
-    in
         div []
             [ h4 [] [text (toString (model.currentvalue)) ]]
 
@@ -169,11 +146,10 @@ convertoint param =
 
 -- Update
                   
-type Msg = Updt1 SliderMsg
-         | SimTime Time.Time
+type Msg = SimTime Time.Time
          | EqTime Time.Time
          | ToggleState
-         | NoOp C.Msg
+         | UpdtCont C.Msg
 
 simoreq model t =
     if model.steps % steplonginterval == 0 then
@@ -184,44 +160,64 @@ simoreq model t =
            
 update msg model =
     case msg of
-        Updt1 v ->
-            let
-                num = (extractvalue v model.p)
-                math = mathmodel num
-            in
-                ({ model |
-                       p = sliderUpdate v model.p,
-                       math = math,
-                       solver = euler timestep math             
-                 }, Cmd.none)
 
         SimTime newtime ->
             let
                 lasttime = model.currenttime
                 lastvalue = model.currentvalue
                 currenttime = lasttime + model.timestep
-                solver = model.solver
+                lastinflow = model.inletflow
+                controller = (C.update
+                                  timestep
+                                  model.controller
+                                  (model.currentvalue)
+                             )
+                newinletflow = ( euler
+                                 model.timestep
+                                 (PModel.mypump controller.output)
+                                 lasttime
+                                 lastinflow
+                               ) 
+                math = PModel.mytank newinletflow
+                solver = euler timestep math
                 steps = model.steps + 1
             in
                 ({ model |
                        currentvalue = solver lasttime lastvalue,
                        currenttime = currenttime,
+                       inletflow = newinletflow,
                        simvalues = model.simvalues |>
                                    BD.pushBack (lasttime,lastvalue),
-                       steps = steps
+                       steps = steps,
+                       controller = controller
                  }, Cmd.none)
 
         EqTime newtime ->
             let
                 lasttime = model.currenttime
-                currenttime = lasttime + model.timestep
                 lastvalue = model.currentvalue
-                solver = model.solver
+                currenttime = lasttime + model.timestep
+                lastinflow = model.inletflow
+                controller = (C.update
+                                  timestep
+                                  model.controller
+                                  (model.currentvalue)
+                             )
+                newinletflow = ( euler
+                                 model.timestep
+                                 (PModel.mypump controller.output)
+                                 lasttime
+                                 lastinflow
+                               ) 
+                math = PModel.mytank newinletflow
+                solver = euler timestep math
                 steps = model.steps + 1
             in ({ model |
                       currentvalue = solver lasttime lastvalue,
                       currenttime = currenttime,
-                      steps = steps
+                      inletflow = newinletflow,
+                      steps = steps,
+                      controller = controller
                 }, Cmd.none)
 
         ToggleState ->
@@ -229,14 +225,14 @@ update msg model =
                 Idle -> ({model | status = Going},Cmd.none)
                 Going -> ({model | status = Idle},Cmd.none)
 
-        NoOp cmsg ->
-            
-            ({ model
-                 | controller = C.updatecontroller cmsg model.controller
-             }
-            , Cmd.none)
-
-        
+        UpdtCont cmsg ->
+            let
+                controller = (C.updatecontroller cmsg model.controller)
+            in
+                ({ model |
+                       controller = controller
+                 }, Cmd.none)
+                
 
 -- Subs
 subscriptions : Model -> Sub Msg
