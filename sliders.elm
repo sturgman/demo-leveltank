@@ -6,6 +6,7 @@ import Html.Attributes as A exposing (type_,value,min,max,step)
 import Html.Events exposing (on, targetValue, onInput,onMouseEnter,onMouseLeave,onFocus)
 import Json.Decode as Json
 import String as S
+import List
 
 -- Sliders                
     
@@ -20,32 +21,41 @@ type alias SliderModel =
 
     
 
-sliderView : SliderModel -> Html SliderMsg
-sliderView model =
+--sliderView : SliderModel -> Html SliderMsg
+sliderView style model =
+    let
+        renderMyNumber = renderNumberInput style model.max model.min model.step
+    in 
     div []
         [ text (model.label ++ ":")
         , div []
-            [ input [ type_ "range"
-                    , onInput Slide
-                    , value <| toString <| model.value
-                    , A.max <| toString <| model.max
-                    , A.min <| toString <| model.min
-                    , step model.step ] []
+            [ input (List.append style
+                         [ type_ "range"
+                         , onInput Slide
+                         , A.max <| toString <| model.max
+                         , A.min <| toString <| model.min
+                         , step model.step
+                         , value <| toString <| model.value
+                         ]
+                    ) []
+                    
             , span []
                 -- The lazy here necessary to prevent continuous update as the model integrates.
-                [ lazy renderNumberInput (model.value,model.max,model.min,model.step) 
+                [ lazy renderMyNumber model.value
                 ] 
             ]
        ]
             
-renderNumberInput (v,max,min,step) =
-    input [type_ "number"
-                     , onchange TextIn
-                     , value <| toString <| v
-                     , A.max <| toString <| max
-                     , A.min <| toString <| min
-                     , A.step step
-          ] []
+renderNumberInput style max min step v =
+    input (List.append style
+               [type_ "number"
+               , onchange TextIn
+               , A.max <| toString <| max
+               , A.min <| toString <| min
+               , A.step step
+               , value <| toString <| v
+               ]
+          ) []
 
 type SliderMsg = Slide String
                | TextIn String

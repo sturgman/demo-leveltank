@@ -240,5 +240,5 @@ subscriptions model =
     if model.status == Idle || model.currenttime > maxx then
         Sub.none
     else
-        Time.every (Time.second * 0.1) (simoreq model)
+        Time.every (Time.second * timestep) (simoreq model)
 
