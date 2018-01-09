@@ -7,7 +7,7 @@ import Html.Events exposing (on, targetValue, onInput,onMouseEnter,onMouseLeave,
 import Json.Decode as Json
 import String as S
 import List
-
+import Round 
 -- Sliders                
     
 type alias SliderModel =
@@ -31,7 +31,7 @@ sliderView style model =
         , div []
             [ input (List.append style
                          [ type_ "range"
-                         , onInput Slide
+                         , onchange Updt
                          , A.max <| toString <| model.max
                          , A.min <| toString <| model.min
                          , step model.step
@@ -49,22 +49,21 @@ sliderView style model =
 renderNumberInput style max min step v =
     input (List.append style
                [type_ "number"
-               , onchange TextIn
+               , onchange Updt
                , A.max <| toString <| max
                , A.min <| toString <| min
                , A.step step
-               , value <| toString <| v
+               , value <| (Round.round 2 v)
                ]
           ) []
 
-type SliderMsg = Slide String
-               | TextIn String
+type SliderMsg = Updt String
 
         
 sliderUpdate : SliderMsg -> SliderModel -> SliderModel
 sliderUpdate msg model =
     case msg of
-        Slide num ->
+        Updt num ->
             case (S.toFloat num) of
                 Ok v ->
                     if v < model.min then
@@ -79,27 +78,13 @@ sliderUpdate msg model =
                 Err v ->
                     model
                 
-        TextIn num ->
-            case (S.toFloat num) of
-                Ok v ->
-                    if v < model.min then
-                        model
-                            
-                    else if v > model.max then
-                        model
-
-                    else
-                        { model | value = v}
-
-                Err v ->
-                    model
 
 onchange tagger = on "change" (Json.map tagger targetValue)
 
 extractvalue : SliderMsg -> SliderModel -> Float
 extractvalue msg model=
     case msg of
-        Slide num ->
+        Updt num ->
             case (S.toFloat num) of
                 Ok v ->
                     if v < model.min then
@@ -114,18 +99,4 @@ extractvalue msg model=
                 Err errmsg ->
                     model.value
                 
-        TextIn num ->
-            case (S.toFloat num) of
-                Ok v ->
-                    if v < model.min then
-                        model.value
-                            
-                    else if v > model.max then
-                        model.value
-
-                    else
-                        v
-
-                Err errmsg ->
-                    model.value
     

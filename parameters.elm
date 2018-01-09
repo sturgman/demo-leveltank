@@ -1,4 +1,5 @@
 module Parameters exposing (..)
+import List
 
 timeinterval : Float
 timeinterval = 2.0
@@ -26,3 +27,15 @@ expdata t = 2.5
 actydata = List.map (toFloat >> expdata) (List.range 0 (round maxx))
 actdata = List.map2 (\a b -> (a,b)) (List.map toFloat (List.range 0 (round maxx))) actydata
 
+
+-- Output flow list
+outflowpattern = (List.repeat 50 10.0) ++
+                 (List.repeat 300 14.0) ++
+                 (List.repeat 300 6.0) ++
+                 (List.repeat 50 5.0) ++
+                 (List.repeat 300 12.0) ++
+                 (List.repeat 200 10.0)
+
+transgain = 20.0
+initiae = 300.0
+        

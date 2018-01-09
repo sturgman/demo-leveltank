@@ -12,7 +12,7 @@ import Plot as P
 import MyPlot as MP
 import PhysicalModels as PModel
 import Controllers as C exposing (initcontroller)
-
+import Round
 -- import FontAwesome.Web as Icon
 -- Model
 
@@ -34,6 +34,9 @@ type alias Model =
     , steps : Int
     , status : Status
     , controller : C.PIDBasic
+    , outletflow : List Float
+    , transgain : Float
+    , iae : Float
     }
 
  
@@ -57,9 +60,7 @@ init : (Model, Cmd Msg)
 init =
     let
         result = 2.5
-        val1 = 50.0
         math = PModel.mytank 10.0
-                                                  
         mysolver = euler timestep math
     in 
     ({ currentvalue = result
@@ -73,34 +74,35 @@ init =
      , solver = mysolver
      , status = Idle
      , controller = C.initcontroller
+     , outletflow = outflowpattern
+     , transgain = transgain
+     , iae = initiae
      }
     , Cmd.none)
 
 -- View
 
 view model =
-    div []
-        [ renderbuttons model "play-circle"
-        , rendercontroller model
-        , renderresults model
-        , renderhistory model
-        ]
-
-renderbuttons model icon=
     let
-        buttontext =
+        statusicon =
             case model.status of
-                Idle -> "Start"
-                Going -> "Pause"
-    in 
+                Idle -> "PLAY"
+                Going -> "PAUSE"
+    in
         div []
-            [ button
-                  [ onClick ToggleState ]
-                  [ Html.i
-                        [A.class ("far fa-" ++ icon) ]
-                        []
-                  ]
+            [ div [] [ (renderbuttons model ToggleState statusicon)
+                     , (renderbuttons model ResetSim "RESET")]
+            , rendercontroller model
+            , renderresults model
+            , renderhistory model
             ]
+
+renderbuttons model msg txt=
+        button
+              [ onClick msg ]
+              [ text txt
+              ]
+        
 
 rendercontroller model =
     div []
@@ -114,9 +116,15 @@ renderinputs model =
 -}
         
 renderresults model =
+    let
+        mystyle = A.style [ ("font-weight","bold")
+                  , ("color","#ff0000")
+                  ]
+    in 
         div []
-            [ h4 [] [text (toString (model.currentvalue)) ]]
-
+            [ text "Your score:  "
+            , span [mystyle] [text (Round.round 1 (model.iae)) ]]
+            
 
 -- renderhistory model =
 --     div []
@@ -150,6 +158,8 @@ type Msg = SimTime Time.Time
          | EqTime Time.Time
          | ToggleState
          | UpdtCont C.Msg
+         | ResetSim
+
 
 simoreq model t =
     if model.steps % steplonginterval == 0 then
@@ -170,26 +180,38 @@ update msg model =
                 controller = (C.update
                                   timestep
                                   model.controller
-                                  (model.currentvalue)
+                                  (model.currentvalue*model.transgain)
                              )
+                outflow = Maybe.withDefault 10.0 (List.head model.outletflow)
+                outletflow = Maybe.withDefault [10.0] (List.tail model.outletflow)
                 newinletflow = ( euler
                                  model.timestep
                                  (PModel.mypump controller.output)
                                  lasttime
                                  lastinflow
                                ) 
-                math = PModel.mytank newinletflow
+                math = PModel.tank 20.0 newinletflow outflow
                 solver = euler timestep math
                 steps = model.steps + 1
+                currentvalue = (clamp
+                                    0.0
+                                    5.0
+                                    (solver lasttime lastvalue))
+                error = abs (currentvalue -
+                             model.controller.setPoint/model.transgain) *
+                        model.timestep
             in
                 ({ model |
-                       currentvalue = solver lasttime lastvalue,
+                       currentvalue = currentvalue,
                        currenttime = currenttime,
                        inletflow = newinletflow,
                        simvalues = model.simvalues |>
                                    BD.pushBack (lasttime,lastvalue),
                        steps = steps,
-                       controller = controller
+                       controller = controller,
+                       outletflow = outletflow,
+                       iae = model.iae - error
+                       
                  }, Cmd.none)
 
         EqTime newtime ->
@@ -201,7 +223,7 @@ update msg model =
                 controller = (C.update
                                   timestep
                                   model.controller
-                                  (model.currentvalue)
+                                  (model.currentvalue*model.transgain)
                              )
                 newinletflow = ( euler
                                  model.timestep
@@ -209,15 +231,26 @@ update msg model =
                                  lasttime
                                  lastinflow
                                ) 
-                math = PModel.mytank newinletflow
+                outflow = Maybe.withDefault 10.0 (List.head model.outletflow)
+                outletflow = Maybe.withDefault [10.0] (List.tail model.outletflow)
+                math = PModel.tank 20.0 newinletflow outflow
                 solver = euler timestep math
                 steps = model.steps + 1
+                currentvalue = (clamp
+                                    0.0
+                                    5.0
+                                    (solver lasttime lastvalue))
+                error = abs (currentvalue -
+                             model.controller.setPoint/model.transgain)
+                        * model.timestep
             in ({ model |
-                      currentvalue = solver lasttime lastvalue,
+                      currentvalue = currentvalue,
                       currenttime = currenttime,
                       inletflow = newinletflow,
                       steps = steps,
-                      controller = controller
+                      controller = controller,
+                      outletflow = outletflow,
+                      iae = model.iae - error
                 }, Cmd.none)
 
         ToggleState ->
@@ -232,6 +265,27 @@ update msg model =
                 ({ model |
                        controller = controller
                  }, Cmd.none)
+
+        ResetSim ->
+            -- init
+            let
+                controller = model.controller
+                updtcontroller = { controller |
+                                       errorintegral = 0.0
+                                 }
+            in
+                ( { model |
+                        currentvalue = 2.5 ,
+                        currenttime = 0.0 ,
+                        inletflow = 10.0 ,
+                        simvalues = (BD.fromList dequesize [(0.0,2.5)]) ,
+                        steps = 0 ,
+                        status = Idle ,
+                        controller = updtcontroller ,
+                        outletflow = outflowpattern ,
+                        iae = initiae
+                  } , Cmd.none )
+
                 
 
 -- Subs

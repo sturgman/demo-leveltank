@@ -51,7 +51,7 @@ update dt controller feedback =
                     c.kp * error
 
                 iterm =
-                    c.errorintegral + error * dt
+                    clamp -20.0 20.0 (c.errorintegral + error * dt)
 
                 dterm =
                     c.kd * delta_error / dt
@@ -62,13 +62,13 @@ update dt controller feedback =
                 slider = controller.manualOutput
 
                 manualOutput = { slider |
-                                     value = output
+                                     value = (clamp 0 100 output)
                                } 
             in
             { controller
                 | errorintegral = iterm
                 , lastE = error
-                , output = output
+                , output = (clamp 0 100 output)
                 , manualOutput =  manualOutput
             }
 
@@ -127,17 +127,17 @@ notMode mode =
 initcontroller =
     (PIDBasic
          -- kp
-         10.0
+         7.2
          -- ki
-         5.0
+         1.3
          -- kd
-         1.0
+         2.4
          -- errorintegral
          0.0
          -- lastE
          0.0
          -- setPoint
-         2.5
+         50.0
          -- output
          50.0
          -- mode
@@ -166,8 +166,8 @@ viewPID cont =
     let
         currentMode =
             case cont.mode of
-                Auto -> "On Auto Mode"
-                Manual -> "On Manual Mode"
+                Auto -> " Auto"
+                Manual -> " Manual"
 
         renderInput =
             case cont.mode of
@@ -182,10 +182,10 @@ viewPID cont =
                     
     in 
     div []
-        [ text "Controller"
-        , div []
+        [ div []
               [ label []
-                    [ input [ type_ "checkbox", onClick ToggleMode ] []
+                    [ text "Controller mode:  "
+                    , input [ type_ "checkbox", onClick ToggleMode ] []
                     , text currentMode
                     ]
               ]
@@ -206,19 +206,20 @@ renderNumberInput msg lbl v =
               [ style
               , type_ "number"
               , onchange msg
-              , value <| toString <| v 
+              , step "0.1"
+              , value <| toString <| v
               ]
               []
         ]
 
 renderkp v =
-    renderNumberInput Updtkp "kp" v
+    renderNumberInput Updtkp "  kp: " v
 
 renderki v =
-    renderNumberInput Updtki "ki" v
+    renderNumberInput Updtki "  ki: " v
 
 renderkd v =
-    renderNumberInput Updtkd "kd" v
+    renderNumberInput Updtkd "  kd: " v
 
         
 onchange tagger =

@@ -18,8 +18,8 @@ pump kp taup m t0 f0 =
 tank area fi fo t0 h0 =
     (fi - fo)/area
 
-mypump = pump 0.2 0.1
+mypump = pump 0.2 5
 
 mytank myfi t0 h0 =
-    tank 20.0 myfi 12 t0 h0
+    tank 20.0 myfi 10 t0 h0
 
