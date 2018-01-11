@@ -29,7 +29,8 @@ sliderView style model =
     div []
         [ text (model.label ++ ":")
         , div []
-            [ input (List.append style
+              [ input
+                    (List.append style
                          [ type_ "range"
                          , onchange Updt
                          , A.max <| toString <| model.max
@@ -39,12 +40,12 @@ sliderView style model =
                          ]
                     ) []
                     
-            , span []
+                    
+              , span []
                 -- The lazy here necessary to prevent continuous update as the model integrates.
                 [ lazy renderMyNumber model.value
                 ] 
-            ]
-       ]
+        ]]
             
 renderNumberInput style max min step v =
     input (List.append style

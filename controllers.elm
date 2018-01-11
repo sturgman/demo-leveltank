@@ -169,16 +169,19 @@ viewPID cont =
                 Auto -> " Auto"
                 Manual -> " Manual"
 
+                          
         renderInput =
             case cont.mode of
                 Auto ->
                     [ lazy renderkp cont.kp
                     , lazy renderki cont.ki
                     , lazy renderkd cont.kd
-                    , Html.map UpdtM (lazy (sliderView [A.disabled True]) cont.manualOutput)
+                    , Html.map UpdtM (lazy (sliderView [ A.disabled True
+                                                       ]) cont.manualOutput)
                     ]
                 Manual ->
-                    [Html.map UpdtM (lazy (sliderView [A.disabled False]) cont.manualOutput)]
+                    [Html.map UpdtM (lazy (sliderView [ A.disabled False
+                                                      ]) cont.manualOutput)]
                     
     in 
     div []

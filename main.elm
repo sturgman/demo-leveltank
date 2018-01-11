@@ -86,23 +86,42 @@ view model =
     let
         statusicon =
             case model.status of
-                Idle -> "PLAY"
-                Going -> "PAUSE"
+                Idle -> "far fa-play-circle"
+                Going -> "far fa-pause-circle"
+        statustext =
+            case model.status of
+                Idle -> "  PLAY"
+                Going -> "  PAUSE"
     in
         div []
-            [ div [] [ (renderbuttons model ToggleState statusicon)
-                     , (renderbuttons model ResetSim "RESET")]
+            [ div [] [ (renderbuttonsgen
+                            ToggleState
+                            statustext
+                            statusicon)
+                     , (renderbuttonsgen
+                            ResetSim
+                            "  RESET"
+                            "far fa-caret-square-left")]
             , rendercontroller model
             , renderresults model
             , renderhistory model
             ]
 
-renderbuttons model msg txt=
-        button
-              [ onClick msg ]
-              [ text txt
-              ]
-        
+renderbuttonsgen msg txt icon =
+    button
+    [ onClick msg, A.class "btn" ]
+    [ (Html.i
+           [A.class icon]
+           [])
+    , text txt
+    ]
+
+renderbuttons msg txt = 
+    button
+    [ onClick msg ]
+    [ text txt
+    ]
+
 
 rendercontroller model =
     div []
