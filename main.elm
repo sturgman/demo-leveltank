@@ -1,49 +1,33 @@
+{- An app that simulates a holding tank with one input and one output
+liquid streams (think of a bath tub with the faucent on and the drain
+open.  The liquid flow rate of the outlet stream is considered a
+disturbance and has a semi random value given by
+Paramters.outflowpattern. The inlet flow rate can be either controlled
+by an automatic feedback controller or manually adjusted by the
+user. The app includes a plot in which the green data points represent
+the actual level of the tank, and the pink line represents the desired
+set-point for the tank's level.
+-}
+
 import Html exposing (Html, input, text, div, program,h4,span,button)
 import Html.Lazy exposing (lazy)
 import Html.Attributes as A exposing (type_,value,min,max,step) 
-import Html.Events exposing (on, targetValue, onInput,onMouseEnter,onMouseLeave,onFocus,onClick)
-import Sliders exposing (..)
+import Html.Events exposing (on, targetValue, onInput,onFocus,onClick)
 import String as S
 import Time
-import Solvers exposing (euler)
-import Parameters exposing (..)
-import BoundedDeque as BD
-import Plot as P
-import MyPlot as MP
-import PhysicalModels as PModel
-import Controllers as C exposing (initcontroller)
-import Round
--- import FontAwesome.Web as Icon
--- Model
 
-          
---}
+import BoundedDeque as BD -- folkertdev/elm-deque
+import Plot as P -- terezka/elm-plot
+import Round -- myrho/elm-round
 
-type Status = Idle
-            | Going
+import Sliders exposing (..) -- Module for a custom input used in the app
+import MyPlot as MP -- Module to customize the plot in the app
+import PhysicalModels as PModel -- Module that includes physical models
+import Controllers as C exposing (initcontroller) -- Module implements PID control
+import Solvers exposing (euler) -- Module implements a numerical integrator
+import Parameters exposing (..) -- Parameters for this specific app
 
-type alias Model =
-    { currentvalue : Float
-    , currenttime : Float
-    , inletflow : Float
-    , simvalues : BD.BoundedDeque (Float,Float)
-    , timeinterval : Float
-    , math : Float -> Float -> Float
-    , solver : Float -> Float -> Float
-    , timestep : Float
-    , steps : Int
-    , status : Status
-    , controller : C.PIDBasic
-    , outletflow : List Float
-    , transgain : Float
-    , iae : Float
-    }
 
- 
-
-miny = 0.0
-maxy = 5.0
-               
 main =
     program
         { init = init
@@ -52,21 +36,58 @@ main =
         , subscriptions = subscriptions
         }
 
-mycontroller = { initcontroller |
-                     setPoint = 2.5
-               }
 
+{- Represents the status of the simulation. It can either be paused
+(Idle) or running (Going).
+-}
+type Status = Idle
+            | Going
+
+{- This is the model for the entire app. There is a lot here!
+
+* I usee BoundedDeque for the history of the simulation. This will
+hopefully facilitate automatically-rescaling plots in the future.
+
+* Model.math is a function that takes the current time and the current
+state variable (the tank level). It can be built with some of the
+functions in the PhysicalModels module. It represents the mathematical
+model being simulated.
+
+* Model.solver is a function that takes the current time and the
+current state-variable. It can be built from an integrator in the
+module Solvers. It is able to integrate the Model.math.
+-}
+type alias Model =
+    { currentvalue : Float -- The current value of the tank level
+    , currenttime : Float -- The current simulation time
+    , inletflow : Float -- The value of the inlet flow
+    , simvalues : BD.BoundedDeque (Float,Float) -- History of the level of the tank
+    , timeinterval : Float -- The update interval for the plot
+    , math : Float -> Float -> Float -- Mathematical model being simulated (holding tank)
+    , solver : Float -> Float -> Float -- The solver coupled to the mathematical model
+    , timestep : Float -- The actual timestep for integration of the mathematical model
+    , steps : Int -- The number of steps that have ellapsed
+    , status : Status -- The status of the simulation (paused or running)
+    , controller : C.PIDBasic -- The controller in charge of the inlet flow rate
+    , outletflow : List Float -- A list describing the pattern of outletflows (semi-random)
+    , transgain : Float -- A float representing the gain of the transmitter.
+    , iae : Float -- The integral of the absolute error (related to the "score")
+    }
+
+
+{- Initializing the model.
+-}
 init : (Model, Cmd Msg)
 init =
     let
-        result = 2.5
+        initialHeight = 2.5
         math = PModel.mytank 10.0
         mysolver = euler timestep math
     in 
-    ({ currentvalue = result
+    ({ currentvalue = initialHeight
      , currenttime = 0.0
      , inletflow = 10.0
-     , simvalues = (BD.fromList dequesize [(0.0,result)])
+     , simvalues = (BD.fromList dequesize [(0.0,initialHeight)])
      , timeinterval = timeinterval
      , timestep = timestep
      , steps = 0
@@ -80,8 +101,8 @@ init =
      }
     , Cmd.none)
 
--- View
 
+-- View
 view model =
     let
         statusicon =
@@ -107,6 +128,9 @@ view model =
             , renderhistory model
             ]
 
+{- What follows is a bunch of helper view functions. To keep the main
+view tidy.
+-}
 renderbuttonsgen msg txt icon =
     button
     [ onClick msg, A.class "btn" ]
@@ -116,24 +140,18 @@ renderbuttonsgen msg txt icon =
     , text txt
     ]
 
-renderbuttons msg txt = 
-    button
-    [ onClick msg ]
-    [ text txt
-    ]
-
 
 rendercontroller model =
     div []
         [ Html.map UpdtCont (lazy C.viewPID model.controller)
         ]
-{-            
-renderinputs model =
-    div []
-        [ Html.map Updt1 (lazy sliderView model.p)
-        ]
--}
-        
+
+{- This uses the integral of the absolute value of the error
+to calculate a score. The student can compare the performance
+of various control strategies using this score. Note that the
+number is not the only criteria by which to assess a control
+strategy.
+-}    
 renderresults model =
     let
         mystyle = A.style [ ("font-weight","bold")
@@ -145,13 +163,9 @@ renderresults model =
             , span [mystyle] [text (Round.round 1 (model.iae)) ]]
             
 
--- renderhistory model =
---     div []
---         (BD.toList (BD.map renderpoint model.simvalues))
-
-
-        
-    
+{- This uses the plot module to make a graph of the level vs time. The
+value of the setpoint is also shown in the graph.
+-}
 renderhistory model =
     MP.fixedRangePlot
         P.defaultSeriesPlotCustomizations minx maxx miny maxy
@@ -161,54 +175,66 @@ renderhistory model =
         ((BD.toList model.simvalues),actdata)
     
 
-renderpoint value =
-    Html.p [] [text (toString value)]
-
-                
-convertoint param =
-    case String.toInt param of
-        Err msg -> 0
-        Ok num -> num
-
-
 -- Update
                   
-type Msg = SimTime Time.Time
-         | EqTime Time.Time
-         | ToggleState
-         | UpdtCont C.Msg
-         | ResetSim
-
-
-simoreq model t =
-    if model.steps % steplonginterval == 0 then
-        SimTime t
-    else
-        EqTime t
-    
+type Msg = SimTime Time.Time -- Performs a timestep and updates plot
+         | EqTime Time.Time -- Performs a timestep
+         | ToggleState -- Toggle between Idle and Going
+         | UpdtCont C.Msg -- Update the controller settings
+         | ResetSim -- Resets the simulation
+  
            
 update msg model =
     case msg of
 
         SimTime newtime ->
             let
+                -- store the current values of the model
                 lasttime = model.currenttime
                 lastvalue = model.currentvalue
-                currenttime = lasttime + model.timestep
                 lastinflow = model.inletflow
+
+                -- calculate the new time
+                currenttime = lasttime + model.timestep
+
+                -- Update the controller based on the current and past
+                -- error. model.transgain converts the error from 
+                -- physical units of length to controller units of 
+                -- % trasnmitter output.
                 controller = (C.update
                                   timestep
                                   model.controller
                                   (model.currentvalue*model.transgain)
                              )
-                outflow = Maybe.withDefault 10.0 (List.head model.outletflow)
-                outletflow = Maybe.withDefault [10.0] (List.tail model.outletflow)
+
+                -- Process the outflow pattern to in outletflow to get
+                -- the current flow rate of the outlet stream. The
+                -- default value of 10.0 is the steady state value
+                -- for the current process parameters.
+                outflow = (Maybe.withDefault 
+                               10.0 
+                               (List.head model.outletflow)
+                          ) 
+                outletflow = (Maybe.withDefault 
+                                  [10.0] 
+                                  (List.tail model.outletflow)
+                             ) 
+                -- Calcualte the new inlet flow. In  this particular
+                -- model we have a pump at the inlet. The flow rate
+                -- through this pump is determined by the signal from
+                -- the controller. An awkward issue with the way
+                -- I am doing things is that I am specifying part of
+                -- the physical model here instead of in the math
+                -- function of the model.
                 newinletflow = ( euler
                                  model.timestep
                                  (PModel.mypump controller.output)
                                  lasttime
                                  lastinflow
-                               ) 
+                               )
+
+                -- Construct the current physical model
+                -- and perform a timestep..
                 math = PModel.tank 20.0 newinletflow outflow
                 solver = euler timestep math
                 steps = model.steps + 1
@@ -216,6 +242,8 @@ update msg model =
                                     0.0
                                     5.0
                                     (solver lasttime lastvalue))
+
+                -- Compute the new value of the error.
                 error = abs (currentvalue -
                              model.controller.setPoint/model.transgain) *
                         model.timestep
@@ -224,6 +252,8 @@ update msg model =
                        currentvalue = currentvalue,
                        currenttime = currenttime,
                        inletflow = newinletflow,
+                       -- Include the previous values of the tank
+                       -- level in the history of the tank.
                        simvalues = model.simvalues |>
                                    BD.pushBack (lasttime,lastvalue),
                        steps = steps,
@@ -234,6 +264,10 @@ update msg model =
                  }, Cmd.none)
 
         EqTime newtime ->
+            -- This does the same as SimTime except without
+            -- updating the history. A lot of code duplication.
+            -- Certainly a single message and an if statement inside
+            -- update would be better.
             let
                 lasttime = model.currenttime
                 lastvalue = model.currentvalue
@@ -308,6 +342,16 @@ update msg model =
                 
 
 -- Subs
+{- Function that decides whether to do a timestep and update of the
+plot or just a timestep. Called from the subscription.
+-}
+simoreq model t =
+    if model.steps % steplonginterval == 0 then
+        SimTime t
+    else
+        EqTime t
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     if model.status == Idle || model.currenttime > maxx then

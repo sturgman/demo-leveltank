@@ -17,7 +17,7 @@ minx = 0.0
 maxx = (toFloat dequesize) * timeinterval
 
 miny = 0.0
-maxy = 1
+maxy = 5.0
 
 -- Example data
 expdata t = 2.5
