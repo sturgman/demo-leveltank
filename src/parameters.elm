@@ -21,7 +21,7 @@ steplonginterval : Int
 steplonginterval = (round (timeinterval/timestep))
 
 minx = 0.0
-maxx = (toFloat dequesize) * timeinterval
+maxx = 120.0 -- (toFloat dequesize) * timeinterval
 
 miny = 0.0
 maxy = 5.0

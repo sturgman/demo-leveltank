@@ -45,7 +45,7 @@ myaxis ticksandlabels =
         }
 
 tickintervalx =
-    timeinterval*(toFloat dequesize)/8
+    maxx/8
 
 ticklocationsx =
     List.map
