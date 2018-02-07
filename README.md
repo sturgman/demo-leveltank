@@ -1,4 +1,4 @@
-# Can you beat the controller? Demo
+# Can you beat the controller?
 
 This is an implementation (and proof of concept) of a level feedback controller for a tank with inlet and outlet liquid streams. Serves as a demonstration of why automatic process control is important for chemical processes.
 
@@ -8,15 +8,16 @@ Inspiration came from:
   * [TechTeach](http://techteach.no/simview/)
   * [LearnChemE](http://www.learncheme.com/simulations)
   
-The nice thing about this one is that it can be used directly from the browser.
+The nice thing about this implementation is that it can be used directly from the browser.
 
 # To Do
 
-This is still a very raw implementation although it has already used in class and it accomplishes the basic objectives. A list of features/changes that are planned or desired:
+This is still a very raw implementation although it has already used in class and it accomplishes its basic objectives. A list of features/changes that are planned or desired:
 
-  * Add styling via css.
-  * Implement a time delay in the mathematical model.
-  * Streamline the way the math model is provided.
+  [] Add styling via css.
+  [] Implement a time delay in the mathematical model. This will require adding the history of other parameters to the model.
+  [] Streamline the way the math model is provided.
+  [] Make the plot self-rescaling. Initially the time range of the plot would be something like 30 and every time the data reaches the end of the plot rescales.
   
 # Main objective
 
