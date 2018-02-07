@@ -177,8 +177,7 @@ renderhistory model =
 
 -- Update
                   
-type Msg = SimTime Time.Time -- Performs a timestep and updates plot
-         | EqTime Time.Time -- Performs a timestep
+type Msg = SimTime Time.Time -- Performs a timestep and conditionally updates plot
          | ToggleState -- Toggle between Idle and Going
          | UpdtCont C.Msg -- Update the controller settings
          | ResetSim -- Resets the simulation
@@ -193,6 +192,14 @@ update msg model =
                 lasttime = model.currenttime
                 lastvalue = model.currentvalue
                 lastinflow = model.inletflow
+
+                -- Conditionally update the history:
+                simvalues = 
+                    if model.steps % steplonginterval == 0 then
+                        model.simvalues |>
+                                   BD.pushBack (lasttime,lastvalue)
+                    else 
+                        model.simvalues
 
                 -- calculate the new time
                 currenttime = lasttime + model.timestep
@@ -252,10 +259,7 @@ update msg model =
                        currentvalue = currentvalue,
                        currenttime = currenttime,
                        inletflow = newinletflow,
-                       -- Include the previous values of the tank
-                       -- level in the history of the tank.
-                       simvalues = model.simvalues |>
-                                   BD.pushBack (lasttime,lastvalue),
+                       simvalues = simvalues,
                        steps = steps,
                        controller = controller,
                        outletflow = outletflow,
@@ -263,48 +267,6 @@ update msg model =
                        
                  }, Cmd.none)
 
-        EqTime newtime ->
-            -- This does the same as SimTime except without
-            -- updating the history. A lot of code duplication.
-            -- Certainly a single message and an if statement inside
-            -- update would be better.
-            let
-                lasttime = model.currenttime
-                lastvalue = model.currentvalue
-                currenttime = lasttime + model.timestep
-                lastinflow = model.inletflow
-                controller = (C.update
-                                  timestep
-                                  model.controller
-                                  (model.currentvalue*model.transgain)
-                             )
-                newinletflow = ( euler
-                                 model.timestep
-                                 (PModel.mypump controller.output)
-                                 lasttime
-                                 lastinflow
-                               ) 
-                outflow = Maybe.withDefault 10.0 (List.head model.outletflow)
-                outletflow = Maybe.withDefault [10.0] (List.tail model.outletflow)
-                math = PModel.tank 20.0 newinletflow outflow
-                solver = euler timestep math
-                steps = model.steps + 1
-                currentvalue = (clamp
-                                    0.0
-                                    5.0
-                                    (solver lasttime lastvalue))
-                error = abs (currentvalue -
-                             model.controller.setPoint/model.transgain)
-                        * model.timestep
-            in ({ model |
-                      currentvalue = currentvalue,
-                      currenttime = currenttime,
-                      inletflow = newinletflow,
-                      steps = steps,
-                      controller = controller,
-                      outletflow = outletflow,
-                      iae = model.iae - error
-                }, Cmd.none)
 
         ToggleState ->
             case model.status of
@@ -342,14 +304,6 @@ update msg model =
                 
 
 -- Subs
-{- Function that decides whether to do a timestep and update of the
-plot or just a timestep. Called from the subscription.
--}
-simoreq model t =
-    if model.steps % steplonginterval == 0 then
-        SimTime t
-    else
-        EqTime t
 
 
 subscriptions : Model -> Sub Msg
@@ -357,5 +311,5 @@ subscriptions model =
     if model.status == Idle || model.currenttime > maxx then
         Sub.none
     else
-        Time.every (Time.second * timestep) (simoreq model)
+        Time.every (Time.second * timestep) SimTime
 
