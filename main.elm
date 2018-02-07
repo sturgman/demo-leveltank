@@ -169,7 +169,9 @@ value of the setpoint is also shown in the graph.
 renderhistory model =
     MP.fixedRangePlot
         P.defaultSeriesPlotCustomizations minx maxx miny maxy
-        [ MP.myseries (Tuple.first >> (List.map (\(x,y) -> MP.smallcircle x y))) -- the argument to myseries and p.line are functions that extract the right series from the data.
+        -- the argument to myseries and p.line are functions that
+        -- extract the right series from the data.
+        [ MP.myseries (Tuple.first >> (List.map (\(x,y) -> MP.smallcircle x y))) 
         , P.line (Tuple.second >> (List.map (\(x,y) -> P.clear x y)))
         ]
         ((BD.toList model.simvalues),actdata)
