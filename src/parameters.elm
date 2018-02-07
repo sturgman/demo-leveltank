@@ -1,8 +1,15 @@
 module Parameters exposing (..)
+
+{- Defines and calculates a bunch of parameters used in the
+simulation.
+-}
+
 import List
 
 timeinterval : Float
 timeinterval = 2.0
+
+setPoint = 2.5
 
 timestep : Float
 timestep = 0.1
@@ -19,11 +26,10 @@ maxx = (toFloat dequesize) * timeinterval
 miny = 0.0
 maxy = 5.0
 
--- Example data
-expdata t = 2.5
+-- Set point
+expdata t = setPoint
 
--- This is all so that I can prepare the analytical solution
--- so that it works with elm-plot
+-- Prepare the data to show the set point in the plot.
 actydata = List.map (toFloat >> expdata) (List.range 0 (round maxx))
 actdata = List.map2 (\a b -> (a,b)) (List.map toFloat (List.range 0 (round maxx))) actydata
 
@@ -37,5 +43,6 @@ outflowpattern = (List.repeat 50 10.0) ++
                  (List.repeat 200 10.0)
 
 transgain = 20.0
+
 initiae = 300.0
         

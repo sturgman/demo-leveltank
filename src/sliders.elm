@@ -1,5 +1,11 @@
 module Sliders exposing (..)
 
+{- Module implementing a syncronized slider plus number input box.  In
+the app it is used as the input method to specify the controller
+output. It also provides feedback to the user about what the automatic
+controller is doing.
+-}
+
 import Html exposing (Html, input, text, div,h4,span)
 import Html.Lazy exposing (lazy)
 import Html.Attributes as A exposing (type_,value,min,max,step) 
@@ -8,6 +14,7 @@ import Json.Decode as Json
 import String as S
 import List
 import Round 
+
 -- Sliders                
     
 type alias SliderModel =
@@ -42,7 +49,8 @@ sliderView style model =
                     
                     
               , span []
-                -- The lazy here necessary to prevent continuous update as the model integrates.
+                -- The lazy here necessary to prevent continuous
+                -- rendering of the textbox as the model integrates.
                 [ lazy renderMyNumber model.value
                 ] 
         ]]
@@ -57,6 +65,7 @@ renderNumberInput style max min step v =
                , value <| (Round.round 2 v)
                ]
           ) []
+
 
 type SliderMsg = Updt String
 
@@ -82,6 +91,8 @@ sliderUpdate msg model =
 
 onchange tagger = on "change" (Json.map tagger targetValue)
 
+{- Helper function to extract the value from a slider into a float.
+-}
 extractvalue : SliderMsg -> SliderModel -> Float
 extractvalue msg model=
     case msg of

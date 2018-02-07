@@ -80,8 +80,8 @@ type alias Model =
 init : (Model, Cmd Msg)
 init =
     let
-        initialHeight = 2.5
-        math = PModel.mytank 10.0
+        initialHeight = setPoint
+        math = PModel.tank 20.0 10.0 10.0
         mysolver = euler timestep math
     in 
     ({ currentvalue = initialHeight
@@ -290,10 +290,10 @@ update msg model =
                                  }
             in
                 ( { model |
-                        currentvalue = 2.5 ,
+                        currentvalue = setPoint ,
                         currenttime = 0.0 ,
                         inletflow = 10.0 ,
-                        simvalues = (BD.fromList dequesize [(0.0,2.5)]) ,
+                        simvalues = (BD.fromList dequesize [(0.0,setPoint)]) ,
                         steps = 0 ,
                         status = Idle ,
                         controller = updtcontroller ,

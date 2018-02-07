@@ -1,4 +1,10 @@
 module MyPlot exposing (..)
+
+{- Module that customizes my elm-plot graphic.  Note that the current
+customization does not render well in Internet Explorer. Some issue
+with shiftedLabel or shiftedLabel2.
+-}
+
 import Svg.Attributes as SA
 import Html.Attributes as A
 import Plot as P
@@ -6,13 +12,10 @@ import Parameters exposing (..)
 
 myseries toDataPoints =
     { axis = P.normalAxis
---  , interpolation = P.Monotone Nothing [ SA.stroke "#1d6632" ]
     , interpolation = P.None
     , toDataPoints = toDataPoints
     }
 
---ponential 
-    
 smallcircle =
     P.dot (P.viewCircle 3.0 "#1d6632")
 
@@ -28,7 +31,9 @@ shiftedLabel2 position =
     { position = position
     , view = P.viewLabel [SA.dy "-1em"] (toString position)
     }
-        
+
+{- Customize the axis to use the shifted labels
+-}        
 myaxis : List Float -> P.Axis
 myaxis ticksandlabels =
     P.customAxis <| \summary ->
@@ -74,25 +79,3 @@ fixedRangePlot default minX maxX minY maxY =
                                  ])
                             ]
         }     
-      
-{--
-myhorizontalaxissummary : Float -> Float -> P.AxisSummary
-myhorizontalaxissummary min max =
-    { min = min
-    , max = max
-    , dataMin : Float
-    , dataMax : Float
-    , marginLower : Float
-    , marginUpper : Float
-    , length : Float
-    , all : List Float }
-        
-horizontalaxis =
-  customAxis <| \summary ->
-    { position = closestToZero
-    , axisLine = Just (simpleLine summary)
-    , ticks = List.map simpleTick (decentPositions summary |> remove 0)
-    , labels = List.map simpleLabel (decentPositions summary |> remove 0)
-    , flipAnchor = False
-    }
---}

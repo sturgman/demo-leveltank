@@ -1,10 +1,9 @@
 module Controllers exposing (..)
 
--- PID
--- A controller with the ability to apply
--- P, I, and/or D components to control action
--- uses the following equation:
--- m(t) = bias + kp*e + ki*integral(e) + kd*derivative(e)
+{- PID A controller with the ability to apply P, I, and/or D
+components to control action uses the following equation: $m(t) = bias
++ kp*e + ki*integral(e) + kd*derivative(e)$
+-}
 
 import Html exposing (div, h4, label, text, input)
 import Html.Events exposing (on, targetValue, onInput,onClick)
@@ -34,6 +33,9 @@ type Mode
     = Auto
     | Manual
 
+{- Updates the value of the controller output. Note that this is not
+the TEA update.
+-}
 update : Float -> PIDBasic -> Float -> PIDBasic
 update dt controller feedback =
     case controller.mode of
@@ -75,7 +77,8 @@ update dt controller feedback =
         Manual ->
             controller
 
-
+{- This is the TEA update for a PID controller.
+-}
 updatecontroller : Msg -> PIDBasic -> PIDBasic
 updatecontroller msg model =
     case msg of
@@ -123,7 +126,9 @@ notMode mode =
         Auto ->
             Manual
 
-
+{- Creates a default controller. Note that all units are controller
+units (%transmitter output and %controller output).
+-}
 initcontroller =
     (PIDBasic
          -- kp
