@@ -2,7 +2,7 @@
 
 This is an implementation (and proof of concept) of a level feedback controller for a tank with inlet and outlet liquid streams. Serves as a demonstration of why automatic process control is important for chemical processes.
 
-A live version of the app can be found [here](paws.kettering.edu/~sturgmancohen/realtime "Live Version of the Demo").
+A live version of the app can be found [here](http://paws.kettering.edu/~sturgmancohen/realtime "Live Version of the Demo").
 
 Inspiration came from:
   * [TechTeach](http://techteach.no/simview/)
