@@ -14,10 +14,10 @@ The nice thing about this implementation is that it can be used directly from th
 
 This is still a very raw implementation although it has already used in class and it accomplishes its basic objectives. A list of features/changes that are planned or desired:
 
-  [] Add styling via css.
-  [] Implement a time delay in the mathematical model. This will require adding the history of other parameters to the model.
-  [] Streamline the way the math model is provided.
-  [] Make the plot self-rescaling. Initially the time range of the plot would be something like 30 and every time the data reaches the end of the plot rescales.
+  - [ ] Add styling via css.
+  - [ ] Implement a time delay in the mathematical model. This will require adding the history of other parameters to the model.
+  - [ ] Streamline the way the math model is provided.
+  - [ ] Make the plot self-rescaling. Initially the time range of the plot would be something like 30 and every time the data reaches the end of the plot rescales.
   
 # Main objective
 
