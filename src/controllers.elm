@@ -5,7 +5,7 @@ module Controllers exposing (Mode(..), Msg(..), PIDBasic, initcontroller, notMod
    + kp*e + ki*integral(e) + kd*derivative(e)$
 -}
 
-import Html exposing (div, h4, input, label, text)
+import Html exposing (div, h4, input, label, text,button)
 import Html.Attributes as A exposing (max, min, step, type_, value)
 import Html.Events exposing (on, onClick, onInput, targetValue)
 import Html.Lazy exposing (lazy)
@@ -191,6 +191,14 @@ viewPID cont =
                 Manual ->
                     " Manual"
 
+        otherMode =
+            case cont.mode of
+                Auto ->
+                    "Manual"
+
+                Manual ->
+                    "Auto"
+                        
         renderInput =
             case cont.mode of
                 Auto ->
@@ -212,6 +220,7 @@ viewPID cont =
                         (lazy
                             (sliderView
                                 [ A.disabled False
+                                , A.class "numoutput"
                                 ]
                             )
                             cont.manualOutput
@@ -221,9 +230,9 @@ viewPID cont =
     div []
         [ div []
             [ label []
-                [ text "Controller mode:  "
-                , input [ type_ "checkbox", onClick ToggleMode ] []
-                , text currentMode
+                [ text (S.append "Controller mode is" currentMode)
+ --               , input [ type_ "checkbox", onClick ToggleMode ] []
+                , renderbuttonsgen ToggleMode otherMode "automan"
                 ]
             ]
         , div []
@@ -264,3 +273,13 @@ renderkd v =
 
 onchange tagger =
     on "change" (Json.map tagger targetValue)
+
+
+renderbuttonsgen msg txt icon =
+    button
+        [ onClick msg, A.class "btn switchmode" ]
+        [ Html.i
+            [ A.class icon ]
+            []
+        , text txt
+        ]
