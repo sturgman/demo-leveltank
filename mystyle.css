@@ -11,10 +11,13 @@
 @media all and (max-width:640px){html {font-size: 15px;}}
 @media all and (max-width:600px){html {font-size: 14px;}}
 @media all and (max-width:560px){html {font-size: 13px;}}
-@media all and (max-width:520px){html {font-size: 12px;}}
 
 @media all and (max-width:520px) {
     html{ font-size: 12px;}
+    body > * {
+    margin-left: auto;
+    margin-right: auto;
+    width: 80%;}
 }
 
 svg {
@@ -67,10 +70,12 @@ max-width:1000px;
 width:50%;
 }
 
-@media all and (max-width:520px) {
-    body > * {
-    margin-left: auto;
-    margin-right: auto;
-    width: 80%;}
+
+.btn {
+    font-size:inherit;
+    font-family:"fira sans";
 }
 
+
+.switchmode {
+    margin-left:1em;
