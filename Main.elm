@@ -160,21 +160,29 @@ view model =
 
                 Going ->
                     "  PAUSE"
+
+        explanation =
+            (text """This simulation is of a tank containing a liquid. A level control system is implemented to maintain the liquid level at a particular set point.
+The controller can be switched from Manual mode, were you determine the controller output, to automatic mode, were a feedback controller takes care of determining the controller output.""")
     in
-    div []
-        [ div []
-            [ renderbuttonsgen
-                ToggleState
-                statustext
-                statusicon
-            , renderbuttonsgen
-                ResetSim
-                "  RESET"
-                "far fa-caret-square-left"
-            ]
-        , rendercontroller model
-        , renderresults model
-        , renderhistory model
+    div [A.style "display" "flex"]
+        [ div [A.style "flex" "1"]
+              [explanation]
+        , div [A.style "flex" "1"]
+              [div []
+                   [ renderbuttonsgen
+                         ToggleState
+                         statustext
+                         statusicon
+                   , renderbuttonsgen
+                       ResetSim
+                       "  RESET"
+                       "far fa-caret-square-left"
+                   ]
+              , rendercontroller model
+              , renderresults model
+              , renderhistory model
+              ]
         ]
 
 
